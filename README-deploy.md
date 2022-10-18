@@ -1,18 +1,19 @@
-# Authenticate Me - Deploying your Express app to Render
+# Authenticate Me - Deploying your Express Project to Render
 
 Render is a web application that makes deploying applications easy for a
 beginner. The free tier allows you to create a database instance to store
 database schemas and tables for multiple applications, as well as host web
 services (such as APIs) and static sites.
 
-Before you begin deploying, **make sure to remove any `console.log`'s or
-`debugger`'s in any production code**. You can search your entire project folder
-if you are using them anywhere.
+Before you begin deploying, **make sure to remove any `console.log`s or
+`debugger`s in any production code**. You can search your entire project folder
+to see if you are using them anywhere by clicking on the magnifying glass icon 
+on the top left sidebar of VSCode.
 
 In the following phases, you will configure the Postgres database for production
 and configure scripts for building and starting the Express production server.
 
-## Best Deployment practices
+## Best Deployment Practices
 
 For this project, you can set Render to auto-deploy your backend every time you
 complete a feature! Essentially, anytime you merge a feature branch into the
