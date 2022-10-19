@@ -7,7 +7,7 @@ services (such as APIs) and static sites.
 
 Before you begin deploying, **make sure to remove any `console.log`s or
 `debugger`s in any production code**. You can search your entire project folder
-to see if you are using them anywhere by clicking on the magnifying glass icon 
+to see if you are using them anywhere by clicking on the magnifying glass icon
 on the top left sidebar of VSCode.
 
 In the following phases, you will configure the Postgres database for production
@@ -88,7 +88,7 @@ The root `package.json`'s scripts should look like this:
 // ...
 ```
 
-The `dev:backend` script is optional and will not be used for Heroku.
+The `dev:backend` script is optional and will not be used for Render.
 
 Finally, commit your changes. Merge your `dev` branch into `main` for deployment.
 
@@ -136,7 +136,9 @@ click on "Web Service" to create the application that will be deployed.
 > _Note: If you set up your Render.com account using your GitHub credentials,
 > you should see a list of applications to choose from. If you do not, click on
 > "Configure Account" for GitHub in the right sidebar to make the connection
-> between your Render and GitHub accounts, then continue._
+> between your Render and GitHub accounts, then continue. If you run into issues
+> with the GitHub connection, use this article to [reset your GitHub
+> connection]._
 
 Look for the name of the application you want to deploy, and click the "Connect"
 button to the right of the name.
@@ -354,3 +356,4 @@ There are two ways to re-deploy your `main` branch changes:
 [Render homepage]: https://render.com/
 [Dashboard]: https://dashboard.render.com/
 [PostgreSQL]: https://www.postgresql.org/
+[reset your GitHub connection]: https://community.render.com/t/github-id-belongs-to-an-existing-render-user/2411/1
