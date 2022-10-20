@@ -107,7 +107,7 @@ If completed correctly, your migration file should look something like this:
 
 let options = {};
 if (process.env.NODE_ENV === 'production') {
-  options.schema = '<your-schema-name>';  // define your schema in options object
+  options.schema = process.env.SCHEMA;  // define your schema in options object
 }
 
 module.exports = {
@@ -271,7 +271,7 @@ const bcrypt = require("bcryptjs");
 
 let options = {};
 if (process.env.NODE_ENV === 'production') {
-  options.schema = '<your-schema-name>';  // define your schema in options object
+  options.schema = process.env.SCHEMA;  // define your schema in options object
 }
 
 module.exports = {

@@ -1,7 +1,6 @@
 # Authenticate Me - Deploying your Express Project to Render
 
-Render is a web application that makes deploying applications easy for a
-beginner. The free tier allows you to create a database instance to store
+Render is a web application for deploying fullstack applications. The free tier allows you to create a database instance to store
 database schemas and tables for multiple applications, as well as host web
 services (such as APIs) and static sites.
 
@@ -94,7 +93,7 @@ Finally, commit your changes. Merge your `dev` branch into `main` for deployment
 
 ## Phase 2: Set up Render.com account
 
-_Skip this setep if you already have a Render.com account connected to your
+_Skip this step if you already have a Render.com account connected to your
 GitHub account._
 
 Navigate to the [Render homepage] and click on "Get Started". On the Sign Up
@@ -105,7 +104,7 @@ your account information.
 
 ## Phase 3: Create a Postgres Database Instance
 
-_Skip this setep if you have already created your Render Postgres database
+_Skip this step if you have already created your Render Postgres database
 instance for another application._
 
 Sign in to Render using your GitHub credentials, and navigate to your
@@ -150,22 +149,22 @@ the environment variables to properly deploy the application.
 
 Start by giving your application a name. This is the name that will be included
 the URL of the deployed site, so make sure it is clear and simple. The name
-should be entered in sword-case.
+should be entered in kebab-case.
 
 Leave the root directory field blank. By default, Render will run commands from
 the root directory.
 
 Make sure the Environment field is set set to "Node", the Region is set to the
-location closest to you, and the Branch is set to "main".
+same location as your database, and the Branch is set to "main".
 
-Next, add your Build script. This is a script that should include everything
+Next, add your Build command. This is a script that should include everything
 that needs to happen _before_ starting the server.
 
 For this project, enter the following script into the Build field, all in one
 line:
 
 ```shell
-# build script - enter all in one line
+# build command - enter all in one line
 
 npm install &&
 npm run build &&
@@ -177,7 +176,14 @@ This script will install dependencies, run the build command in the
 __package.json__ file, and run the migrations and seed files. All of these
 commands will be run from the backend directory.
 
-Now, add your start script in the Start field:
+> Note: Due to limitations of Render.com's free tier, you will be including the
+> seed command within the build. **This should only be done for demo
+> applications, not production applications.** Including the seed command in the
+> build will allow you to more easily replace your free database after it
+> expires every 90 days, and will also help keep your application in a pristine
+> state with clean seed data.
+
+Now, add your start command in the Start field:
 
 ```shell
 npm start
@@ -201,6 +207,7 @@ Add the following keys and values in the Render GUI form:
 - JWT_SECRET (click "Generate" to generate a secure secret for production)
 - JWT_EXPIRES_IN (copy value from local __.env file__)
 - NODE_ENV production
+- SCHEMA (custom name, in snake_case)
 
 In a new tab, navigate to your dashboard and click on your Postgres database
 instance.
@@ -348,9 +355,6 @@ There are two ways to re-deploy your `main` branch changes:
 1. If you set up your application for Auto-deployment, it should automatically re-deploy after every push to main.
 
 2. You can manually trigger a re-deployment at any time. Click on the blue "Manual Deploy" button, and choose "Clear Build Cache & Deploy". You will be able to see the logs and confirm that your re-deployment is successful.
-
-
-
 
 
 [Render homepage]: https://render.com/

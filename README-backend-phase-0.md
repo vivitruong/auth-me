@@ -122,9 +122,10 @@ PORT=8000
 DB_FILE=db/dev.db
 JWT_SECRET=«generate_strong_secret_here»
 JWT_EXPIRES_IN=604800
+SCHEMA=«custom_schema_name_here»
 ```
 
-Assign `PORT` to `8000`, and a strong JWT secret.
+Assign `PORT` to `8000`, choose a custom schema name in snake case, and generate a strong JWT secret.
 
 > Recommendation to generate a strong secret: create a random string using
 > `openssl` (a library that should already be installed in your Ubuntu/MacOS
@@ -179,7 +180,7 @@ npx sequelize init
 ```
 
 Replace the contents of the newly created `backend/config/database.js` file with
-the following, replacing "<your-schema-name>" with the name of your application:
+the following.
 
 ```js
 // backend/config/database.js
@@ -204,14 +205,14 @@ module.exports = {
       }
     },
     define: {
-      schema: "<your-schema-name>"
+      schema: process.env.SCHEMA
     }
   }
 };
 ```
 
 This will allow you to load the database configuration environment variables
-from the `.env` file into the `config/index.js`.
+from the `.env` file into the `config/index.js`, as well as define the global schema for the project.
 
 Notice how the `production` database configuration has different keys than the
 `development` configuration? When you deploy your application to production,
@@ -221,16 +222,14 @@ database management system. Recall that SQLite3 is supposed to be used
 **ONLY in development**. PostgresQL is a production-level database management
 system.
 
-Create a new file at the root of the __backend__ directory called __psql-setup-script.js__, and add the following contents, replacing `"<your-schema-name>"` with the name of your application:
+Create a new file at the root of the __backend__ directory called __psql-setup-script.js__, and add the following contents.
 
 ```js
 const { sequelize } = require('./db/models');
 
-const schemaName = '<your-schema-name>'; // replace with your schema name
-
 sequelize.showAllSchemas({ logging: false }).then(async (data) => {
-  if (!data.includes(schemaName)) {
-    await sequelize.createSchema(schemaName);
+  if (!data.includes(process.env.SCHEMA)) {
+    await sequelize.createSchema(process.env.SCHEMA);
   }
 });
 ```
