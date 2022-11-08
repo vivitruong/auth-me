@@ -423,7 +423,7 @@ Update your server files to add `firstName` and `lastName` attributes to a
 `User` in your database. **Make sure to update your migration and model files
 and your route handlers** to reflect this change!
 
-Confirm that your `POST /session` and your `POST /users` endpoints return the
+Confirm that your `POST /api/session` and your `POST /api/users` endpoints return the
 user in the following format on successful login/signup:
 
 ```js
@@ -437,7 +437,7 @@ user in the following format on successful login/signup:
 }
 ```
 
-Confirm that your `GET /session` endpoint returns the user in the following
+Confirm that your `GET /api/session` endpoint returns the user in the following
 format if there is a logged in user:
 
 ```js
@@ -451,7 +451,7 @@ format if there is a logged in user:
 }
 ```
 
-Confirm that your `GET /session` endpoint returns the following if there
+Confirm that your `GET /api/session` endpoint returns the following if there
 is **no** logged in user:
 
 ```js
