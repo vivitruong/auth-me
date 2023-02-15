@@ -19,7 +19,7 @@ error with a status code of `404`.
 app.use((_req, _res, next) => {
   const err = new Error("The requested resource couldn't be found.");
   err.title = "Resource Not Found";
-  err.errors = ["The requested resource couldn't be found."];
+  err.errors = { message: "The requested resource couldn't be found." };
   err.status = 404;
   next(err);
 });
@@ -48,8 +48,12 @@ const { ValidationError } = require('sequelize');
 app.use((err, _req, _res, next) => {
   // check if error is a Sequelize error:
   if (err instanceof ValidationError) {
-    err.errors = err.errors.map((e) => e.message);
+    let errors = {};
+    for (let error of err.errors) {
+      errors[error.path] = error.message;
+    }
     err.title = 'Validation error';
+    err.errors = errors;
   }
   next(err);
 });
@@ -58,15 +62,15 @@ app.use((err, _req, _res, next) => {
 If the error that caused this error-handler to be called is an instance of
 `ValidationError` from the `sequelize` package, then the error was created from
 a Sequelize database validation error and the additional keys of `title` string
-and `errors` array will be added to the error and passed into the next error
-handling middleware.
+and an object representation of its `errors` array and passed into the next
+error handling middleware.
 
 ## Error Formatter Error-Handler
 
 The last error handler is for formatting all the errors before returning a JSON
-response. It will include the error message, the errors array, and the error
-stack trace (if the environment is in development) with the status code of the
-error message.
+response. It will include the error message, the error messages as a JSON object
+with key-value pairs, and the error stack trace (if the environment is in
+development) with the status code of the error message.
 
 ```js
 // backend/app.js
@@ -103,9 +107,9 @@ Found_ and Error Formatter error handlers!
 {
   "title": "Resource Not Found",
   "message": "The requested resource couldn't be found.",
-  "errors": [
-    "The requested resource couldn't be found."
-  ],
+  "errors": {
+    "message": "The requested resource couldn't be found."
+  },
   "stack": "Error: The requested resource couldn't be found.\n ...<stack trace>..."
 }
 ```
