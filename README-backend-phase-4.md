@@ -85,6 +85,8 @@ top of the file and create an Express router:
 ```js
 // backend/routes/api/session.js
 const express = require('express');
+const { Op } = require('sequelize');
+const bcrypt = require('bcryptjs');
 
 const { setTokenCookie, restoreUser } = require('../../utils/auth');
 const { User } = require('../../db/models');
@@ -93,11 +95,39 @@ const router = express.Router();
 ```
 
 Next, add the `POST /api/session` route to the router using an asynchronous
-route handler. In the route handler, call the `login` static method from the
-`User` model. If there is a user returned from the `login` static method, then
-call `setTokenCookie` and return a JSON response with the user information. If
-there is no user returned from the `login` static method, then create a `"Login
-failed"` error and invoke the next error-handling middleware with it.
+route handler. In the route handler, query for the user identified by the
+provided credential (which can be either a `username` or `email`). Make sure to
+turn off the default scope so that you can read all the attributes of the user
+including `hashedPassword`.
+
+If a user with those credentials isn't found in the database, then create a
+`"Login failed"` error and invoke the `next` error-handling middleware with it.
+
+Or if a user with those credentials IS found in the database, but the `password`
+in the request body doesn't match the `hashedPassword` of the user found, then
+invoke the `next` error-handling middleware with the same `"Login failed"`
+error.
+
+You can use the `compareSync` method from the `bcryptjs` node module to see if
+the request body's `password` matches with the user's `hashedPassword` in the
+database.
+
+If the user's password is correct, call `setTokenCookie` and return a JSON
+response with the user's non-sensitive information. Make sure the JSON response
+doesn't include the `hashedPassword`.
+
+Here's what the format of the JSON response should look like if the user is
+successfully logged in:
+
+```js
+{
+  user: {
+    id,
+    email,
+    username
+  }
+}
+```
 
 ```js
 // backend/routes/api/session.js
@@ -109,9 +139,16 @@ router.post(
   async (req, res, next) => {
     const { credential, password } = req.body;
 
-    const user = await User.login({ credential, password });
+    const user = await User.unscoped().findOne({
+      where: {
+        [Op.or]: {
+          username: credential,
+          email: credential
+        }
+      }
+    });
 
-    if (!user) {
+    if (!user || !bcrypt.compareSync(password, user.hashedPassword.toString())) {
       const err = new Error('Login failed');
       err.status = 401;
       err.title = 'Login failed';
@@ -119,10 +156,16 @@ router.post(
       return next(err);
     }
 
-    await setTokenCookie(res, user);
+    const safeUser = {
+      id: user.id,
+      email: user.email,
+      username: user.username,
+    };
+
+    await setTokenCookie(res, safeUser);
 
     return res.json({
-      user: user
+      user: safeUser
     });
   }
 );
@@ -355,6 +398,7 @@ of the file and create an Express router:
 
 ```js
 const express = require('express');
+const bcrypt = require('bcryptjs');
 
 const { setTokenCookie, requireAuth } = require('../../utils/auth');
 const { User } = require('../../db/models');
@@ -363,11 +407,29 @@ const router = express.Router();
 ```
 
 Next, add the `POST /api/users` route to the router using an asynchronous route
-handler. In the route handler, call the
-`signup` static method on the `User` model. If the user is successfully created,
-then call `setTokenCookie` and return a JSON response with the user information.
-If the creation of the user is unsuccessful, then a Sequelize Validation error
-will be passed onto the next error-handling middleware.
+handler. In the route handler, deconstruct the request body, then use bcrypt's
+`hashSync` function to hash the user's provided password to be saved as the
+user's `hashedPassword` in the database. Create a new `User` in the database
+with the `username` and `email` from the request body and the `hashedPassword`
+generated from `bcryptjs`.
+
+Then, use `setTokenCookie` to log in the user by creating a JWT cookie with the
+user's non-sensitive information as its payload.
+
+Finally, send a JSON response containing the user's non-sensitive information.
+
+Here's what the format of the JSON response should look like if the user is
+successfully created in the database:
+
+```js
+{
+  user: {
+    id,
+    email,
+    username
+  }
+}
+```
 
 ```js
 // backend/routes/api/users.js
@@ -375,15 +437,22 @@ will be passed onto the next error-handling middleware.
 
 // Sign up
 router.post(
-  '/',
+  '',
   async (req, res) => {
     const { email, password, username } = req.body;
-    const user = await User.signup({ email, username, password });
+    const hashedPassword = bcrypt.hashSync(password);
+    const user = await User.create({ email, username, hashedPassword });
 
-    await setTokenCookie(res, user);
+    const safeUser = {
+      id: user.id,
+      email: user.email,
+      username: user.username,
+    };
+
+    await setTokenCookie(res, safeUser);
 
     return res.json({
-      user: user
+      user: safeUser
     });
   }
 );
@@ -496,8 +565,10 @@ session to your backend server.
 
 The `GET /api/session` get session user route will return the session user
 as JSON under the key of `user` . If there is not a session, it will return a
-JSON with an empty object. To get the session user, connect the `restoreUser`
-middleware.
+JSON with an empty object. `req.user` should be assigned when the `restoreUser`
+middleware is called as it was connected to the router in the
+`routes/api/index.js` file before the `routes/api/session.js` was connected to
+the router (`router.use(restoreUser)`).
 
 Add the route to the `router` in the `backend/routes/api/session.js` file.
 
@@ -508,12 +579,16 @@ Add the route to the `router` in the `backend/routes/api/session.js` file.
 // Restore session user
 router.get(
   '/',
-  restoreUser,
   (req, res) => {
     const { user } = req;
     if (user) {
+      const safeUser = {
+        id: user.id,
+        email: user.email,
+        username: user.username,
+      };
       return res.json({
-        user: user.toSafeObject()
+        user: safeUser
       });
     } else return res.json({ user: null });
   }

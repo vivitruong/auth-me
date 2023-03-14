@@ -369,14 +369,6 @@ exclude the desired fields from the default query. For example, when you run
 `User.findAll()` all fields besides `hashedPassword`, `updatedAt`, `email`, and
 `createdAt` will be populated in the return of that query.
 
-Next, define a `User` model scope for `currentUser` that will exclude only the
-`hashedPassword` field. Finally, define another scope for including all the
-fields, which should only be used when checking the login credentials of a user.
-These scopes need to be explicitly used when querying. For example,
-`User.scope('currentUser').findByPk(id)` will find a `User` by the specified
-`id` and return only the `User` fields that the `currentUser` model scope
-allows.
-
 Your `user.js` model file should now look like this:
 
 ```js
@@ -427,14 +419,6 @@ module.exports = (sequelize, DataTypes) => {
         attributes: {
           exclude: ["hashedPassword", "email", "createdAt", "updatedAt"]
         }
-      },
-      scopes: {
-        currentUser: {
-          attributes: { exclude: ["hashedPassword"] }
-        },
-        loginUser: {
-          attributes: {}
-        }
       }
     }
   );
@@ -442,8 +426,8 @@ module.exports = (sequelize, DataTypes) => {
 };
 ```
 
-These scopes help protect sensitive user information that should not be exposed
-to other users. You will be using these scopes in the later sections.
+This scope will help protect sensitive user information that should not be exposed
+to other users.
 
 ## Authentication Flow
 
@@ -475,162 +459,12 @@ The backend logout flow will be based on the following plan:
 2. The API logout handler will remove the JWT cookie set by the login or signup
    API routes and return a JSON success message.
 
-## User Model Methods
-
-After creating the model scopes, you should create methods that the API routes
-for authentication will use to interact with the `Users` table. The planned
-methods are based on the authentication flow plans outlined above.
-
-Define an instance method `toSafeObject` in the `user.js` model
-file. This method will return an object with only the `User` instance
-information that is safe to save to a JWT, like `id`, `username`, and `email`.
-
-Your `user.js` model file should now look like this:
-
-```js
-'use strict';
-const { Model, Validator } = require('sequelize');
-
-module.exports = (sequelize, DataTypes) => {
-  class User extends Model {
-    toSafeObject() {
-      const { id, username, email } = this; // context will be the User instance
-      return { id, username, email };
-    }
-    static associate(models) {
-      // define association here
-    }
-  };
-
-  User.init(
-    {
-      username: {
-        type: DataTypes.STRING,
-        allowNull: false,
-        validate: {
-          len: [4, 30],
-          isNotEmail(value) {
-            if (Validator.isEmail(value)) {
-              throw new Error("Cannot be an email.");
-            }
-          }
-        }
-      },
-      email: {
-        type: DataTypes.STRING,
-        allowNull: false,
-        validate: {
-          len: [3, 256],
-          isEmail: true
-        }
-      },
-      hashedPassword: {
-        type: DataTypes.STRING.BINARY,
-        allowNull: false,
-        validate: {
-          len: [60, 60]
-        }
-      }
-    },
-    {
-      sequelize,
-      modelName: "User",
-      defaultScope: {
-        attributes: {
-          exclude: ["hashedPassword", "email", "createdAt", "updatedAt"]
-        }
-      },
-      scopes: {
-        currentUser: {
-          attributes: { exclude: ["hashedPassword"] }
-        },
-        loginUser: {
-          attributes: {}
-        }
-      }
-    }
-  );
-  return User;
-};
-```
-
-Define an instance method `validatePassword` in the `user.js`
-model file. It should accept a `password` string and return `true` if there is a
-match with the `User` instance's `hashedPassword`. If there is no match, it
-should return `false`.
-
-```js
-    validatePassword(password) {
-      return bcrypt.compareSync(password, this.hashedPassword.toString());
-    }
-```
-
-You are using the `bcryptjs` package to compare the `password` and the
-`hashedPassword`, so make sure to import the package at the top of the `user.js`
-file.
-
-```js
-const bcrypt = require('bcryptjs');
-```
-
-Define a static method `getCurrentUserById` in the `user.js` model file
-that accepts an `id`. It should use the `currentUser` scope to return a
-`User` with that `id`.
-
-```js
-    static getCurrentUserById(id) {
-      return User.scope("currentUser").findByPk(id);
-    }
-```
-
-Define a static method `login` in the `user.js` model file. It should
-accept an object with `credential` and `password` keys. The method should search
-for one `User` with the specified `credential` (either a `username` or an
-`email`). If a user is found, then the method should validate the `password` by
-passing it into the instance's `.validatePassword` method. If the `password` is
-valid, then the method should return the user by using the `currentUser` scope.
-
-```js
-    static async login({ credential, password }) {
-      const { Op } = require('sequelize');
-      const user = await User.scope('loginUser').findOne({
-        where: {
-          [Op.or]: {
-            username: credential,
-            email: credential
-          }
-        }
-      });
-      if (user && user.validatePassword(password)) {
-        return await User.scope('currentUser').findByPk(user.id);
-      }
-    }
-```
-
-Define a static method `signup` in the `user.js` model file that accepts an
-object with a `username`, `email`, and `password` key. Hash the `password` using
-the `bcryptjs` package's `hashSync` method. Create a `User` with the `username`,
-`email`, and `hashedPassword`. Return the created user using the `currentUser`
-scope.
-
-```js
-    static async signup({ username, email, password }) {
-      const hashedPassword = bcrypt.hashSync(password);
-      const user = await User.create({
-        username,
-        email,
-        hashedPassword
-      });
-      return await User.scope('currentUser').findByPk(user.id);
-    }
-```
-
 ## Commit your code
 
 Now is a good time to commit and push your code to GitHub!
 
 Here's a recommendation for what to write as your commit message:
-"Add User model authentication Sequelize scopes and methods"
+"Add User model scope for user security"
 
 ## User Auth Middlewares
 
@@ -656,9 +490,9 @@ This first function is setting the JWT cookie after a user is logged in or
 signed up. It takes in the response and the session user and generates a JWT
 using the imported secret. It is set to expire in however many seconds you
 set on the `JWT_EXPIRES_IN` key in the `.env` file. The payload of the JWT will
-be the return of the instance method `.toSafeObject` that you added previously
-to the `User` model. After the JWT is created, it's set to an HTTP-only cookie
-on the response as a `token` cookie.
+be the user's `id`, `username`, and `email` attributes. Do NOT add the user's
+`hashedPassword` attribute to the payload. After the JWT is created, it's set to
+an HTTP-only cookie on the response as a `token` cookie.
 
 ```js
 // backend/utils/auth.js
@@ -667,8 +501,13 @@ on the response as a `token` cookie.
 // Sends a JWT Cookie
 const setTokenCookie = (res, user) => {
   // Create the token.
+  const safeUser = {
+    id: user.id,
+    email: user.email,
+    username: user.username,
+  };
   const token = jwt.sign(
-    { data: user.toSafeObject() },
+    { data: safeUser },
     secret,
     { expiresIn: parseInt(expiresIn) } // 604,800 seconds = 1 week
   );
@@ -696,12 +535,16 @@ user. You will create and utilize a middleware function called restoreUser that
 will restore the session user based on the contents of the JWT cookie.
 
 Create a middleware function that will verify and parse the JWT's payload and
-search the database for a `User` with the id in the payload. (This query should
-use the `currentUser` scope since the `hashedPassword` is not needed for this
-operation.) If there is a `User` found, then save the user to a key of `user`
-onto the Request, `req.user`. If there is an error verifying the JWT or a `User`
-cannot be found with the `id`, then clear the `token` cookie from the
-response and set `req.user` to `null`.
+search the database for a `User` with the id in the payload. The default scope
+on the `User` model, however, prevents the `hashedPassword`, `email`,
+`createdAt`, and `updatedAt` attributes from returning from that search. You
+want to include the `email`, `createdAt`, and `updatedAt` attributes to be
+returned in the search (but not `hashedPassword`).
+
+If there is a `User` found in the search, then save the user to a key of
+`user` onto the Request (`req.user`). If there is an error verifying the JWT or
+a `User`cannot be found with the `id` in the JWT payload, then clear the `token`
+cookie from the response and set `req.user` to `null`.
 
 ```js
 // backend/utils/auth.js
@@ -719,7 +562,11 @@ const restoreUser = (req, res, next) => {
 
     try {
       const { id } = jwtPayload.data;
-      req.user = await User.scope('currentUser').findByPk(id);
+      req.user = await User.findByPk(id, {
+        attributes: {
+          include: ['email', 'createdAt', 'updatedAt']
+        }
+      });
     } catch (e) {
       res.clearCookie('token');
       return next();
@@ -794,10 +641,10 @@ const { setTokenCookie } = require('../../utils/auth.js');
 const { User } = require('../../db/models');
 router.get('/set-token-cookie', async (_req, res) => {
   const user = await User.findOne({
-      where: {
-        username: 'Demo-lition'
-      }
-    });
+    where: {
+      username: 'Demo-lition'
+    }
+  });
   setTokenCookie(res, user);
   return res.json({ user: user });
 });

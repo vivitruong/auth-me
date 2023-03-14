@@ -131,9 +131,16 @@ router.post(
   async (req, res, next) => {
     const { credential, password } = req.body;
 
-    const user = await User.login({ credential, password });
+    const user = await User.unscoped().findOne({
+      where: {
+        [Op.or]: {
+          username: credential,
+          email: credential
+        }
+      }
+    });
 
-    if (!user) {
+    if (!user || !bcrypt.compareSync(password, user.hashedPassword.toString())) {
       const err = new Error('Login failed');
       err.status = 401;
       err.title = 'Login failed';
@@ -141,10 +148,16 @@ router.post(
       return next(err);
     }
 
-    await setTokenCookie(res, user);
+    const safeUser = {
+      id: user.id,
+      email: user.email,
+      username: user.username,
+    };
+
+    await setTokenCookie(res, safeUser);
 
     return res.json({
-      user: user
+      user: safeUser
     });
   }
 );
@@ -307,16 +320,23 @@ Your signup route should now look like this:
 
 // Sign up
 router.post(
-  '/',
+  '',
   validateSignup,
   async (req, res) => {
     const { email, password, username } = req.body;
-    const user = await User.signup({ email, username, password });
+    const hashedPassword = bcrypt.hashSync(password);
+    const user = await User.create({ email, username, hashedPassword });
 
-    await setTokenCookie(res, user);
+    const safeUser = {
+      id: user.id,
+      email: user.email,
+      username: user.username,
+    };
+
+    await setTokenCookie(res, safeUser);
 
     return res.json({
-      user: user
+      user: safeUser
     });
   }
 );
@@ -435,6 +455,7 @@ user in the following format on successful login/signup:
     lastName,
     email,
     userName
+  }
 }
 ```
 
@@ -449,6 +470,7 @@ format if there is a logged in user:
     lastName,
     email,
     userName
+  }
 }
 ```
 
