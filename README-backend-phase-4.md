@@ -437,7 +437,7 @@ successfully created in the database:
 
 // Sign up
 router.post(
-  '',
+  '/',
   async (req, res) => {
     const { email, password, username } = req.body;
     const hashedPassword = bcrypt.hashSync(password);
